@@ -1,210 +1,302 @@
-# AI20K Agent Template
+# IncidentLens
 
-## IncidentLens — tài liệu và role hiện tại
+> Trợ lý AI hỗ trợ phân tích sự cố giao thông từ video và telemetry, tổng hợp bằng chứng và tạo báo cáo để con người kiểm duyệt.
 
-- [tools](tools/README.md): SPEC, ADR, planning, tasks và [implementation audit](tools/docs/implementation-audit.md).
-- [backend](backend/README.md): domain logic, database, worker và docs Backend.
-- [api](api/README.md): routes, public contract và docs API.
-- [frontend](frontend/README.md): Next.js UI, client services và docs Frontend.
-- [Docker APP + AI + Neon](docs/docker_app_ai_neon.md): chạy và di chuyển hai gói độc lập, dùng PostgreSQL cloud từ `.env`.
+**Team P-076 · Đề tài RAV-18**
 
-Phần guide/template bên dưới được giữ để tham khảo. Trạng thái IncidentLens cụ thể xem audit và role docs ở trên.
+IncidentLens giúp người phân tích và người kiểm duyệt xem lại video MP4, đối chiếu log CSV, tìm các thời điểm cần chú ý và quản lý báo cáo trong cùng một workspace. Mỗi kết quả phân tích đi kèm bằng chứng để người dùng có thể kiểm tra trước khi phê duyệt.
 
-Template chính thức cho học viên VinUni AI20K Build Phase: cấu trúc dự án, code
-mẫu và hướng dẫn kỹ thuật để xây dựng một AI Agent hoàn chỉnh — từ kiến trúc,
-code, test cho đến deploy và nộp bài Demo Day.
+## Mô tả dự án
 
-Technical Guidebook: <https://phoenix.note.transformerlabs.ai/technical-book>
+Việc xem lại video và log thủ công khiến quá trình điều tra sự cố mất thời gian, khó đối chiếu thông tin và khó theo dõi thay đổi báo cáo. IncidentLens hỗ trợ quy trình này bằng các chức năng:
 
-Chạy Qwen local sau setup: `powershell -ExecutionPolicy Bypass -File .\start-local.ps1`.
-Log dịch vụ nằm tại `logs/runtime/`; xem [quy ước file runtime](backend/docs/runtime_files.md).
+- **Tiếp nhận dữ liệu:** tải video MP4 và telemetry CSV tùy chọn.
+- **Phân tích bằng AI:** dùng mô hình thị giác–ngôn ngữ Qwen qua Ollama để phân tích hình ảnh, kết hợp telemetry khi có dữ liệu phù hợp.
+- **Theo dõi xử lý:** tạo job phân tích, hiển thị tiến độ và trạng thái xử lý.
+- **Kiểm tra bằng chứng:** xem video, frame, timeline và thông tin phân tích trong workspace.
+- **Kiểm duyệt báo cáo:** chỉnh sửa bản nháp, gửi duyệt, phê duyệt hoặc từ chối; theo dõi phiên bản và lịch sử thao tác.
+- **Quản lý truy cập:** đăng nhập và phân quyền theo vai trò.
 
-## Template có sẵn những gì
+Kết quả AI là đầu vào hỗ trợ kiểm duyệt. Kết quả không phát hiện sự cố chỉ phản ánh phạm vi dữ liệu đã phân tích, không bảo đảm toàn bộ video không có sự cố.
 
-- **Cấu trúc thư mục tách lớp** — `agents/`, `api/`, `services/`, `models/` đã
-  chia sẵn, không phải bàn lại từ đầu.
-- **Code mẫu chạy được** — LangGraph agent (state, node, tool), FastAPI routes,
-  Pydantic settings, schema.
-- **Docker và CI** — Dockerfile multi-stage, `docker-compose.yml`, workflow
-  GitHub Actions chạy `ruff` + `pytest` khi push lên `main`/`develop` và khi mở
-  pull request vào `main`.
-- **Technical Guidebook 10 chương** trong `docs/guide/`, đồng thời đọc được
-  online.
-- **Checklist 10 deliverables** của Demo Day.
-- **AI usage logging** — hook cài sẵn cho 6 công cụ AI, log tự động gửi lên
-  grading server mỗi lần `git push`.
+## Screenshot
 
-## Yêu cầu
+### Trang giới thiệu
 
-- Python 3.11 (phiên bản CI đang dùng)
-- Git
-- Docker — tuỳ chọn, chỉ cần nếu chạy `docker compose`
+![Trang giới thiệu IncidentLens](frontend/docs/assets/landing-sun.png)
 
-## Bắt đầu
+### Workspace kiểm duyệt
 
-### 1. Clone repo của đội
+![Workspace kiểm duyệt sự cố trên desktop](frontend/docs/ui-fix-evidence/review-desktop.png)
 
-Khi đội được chốt, hệ thống tự sinh repo cho đội từ template này, nằm trong org
-GitHub của khoá bạn đang học và đặt tên theo mã đội. Copy URL ở trang đội trên
-Phoenix rồi clone về:
+Ảnh chụp giao diện đã lưu trong repository; dữ liệu hiển thị có thể là dữ liệu demo tại thời điểm chụp.
 
-```bash
-git clone https://github.com/<ORG-CỦA-KHOÁ>/<MÃ-ĐỘI>.git
-cd <MÃ-ĐỘI>
+## Architecture Diagram
+
+Đường liền mô tả luồng phân tích hiện tại; nét đứt là kết nối chưa tích hợp.
+
+```mermaid
+flowchart TB
+    User["Người phân tích / Người kiểm duyệt"]
+    subgraph App["Ứng dụng IncidentLens"]
+        FE["Frontend · Next.js / React<br/>Upload, tiến độ, bằng chứng, báo cáo"]
+        API["Backend API · FastAPI<br/>Auth, incidents, jobs, review, audit"]
+        DB[("SQLite local / PostgreSQL<br/>Metadata, hàng đợi job, báo cáo, audit")]
+        Files[("Media storage<br/>MP4, CSV, frame, clip, artifacts")]
+        Worker["Analysis Worker · Python<br/>Nhận job, FFmpeg, telemetry, kiểm tra kết quả"]
+    end
+    subgraph Inference["Inference service · local hoặc máy GPU riêng"]
+        Qwen["Ollama HTTP API<br/>Qwen2.5-VL 7B / Qwen3.5 9B"]
+    end
+    subgraph Extension["Module mẫu / mở rộng · chưa nối vào luồng chính"]
+        Agent["LangGraph Agent<br/>analyze → respond · node mẫu"]
+        Vector[("Vector Store / RAG<br/>Chưa tích hợp")]
+        External["External APIs · OpenAI<br/>Có helper, chưa được node gọi"]
+    end
+    User --> FE
+    FE <-->|"HTTP upload / polling / review"| API
+    API <-->|"SQLAlchemy"| DB
+    API <-->|"Lưu upload / phục vụ media"| Files
+    Worker <-->|"Claim job / tiến độ / kết quả"| DB
+    Worker <-->|"Đọc nguồn / ghi bằng chứng"| Files
+    Worker <-->|"HTTP · frame và ngữ cảnh / JSON"| Qwen
+    API -.->|"Router chat mẫu chưa mount"| Agent
+    Agent -.->|"Retrieval dự kiến"| Vector
+    Agent -.->|"Tích hợp dự kiến"| External
 ```
 
-Không cần `rm -rf .git`, `git init` hay `git remote add`: repo sinh từ template
-đã bắt đầu bằng lịch sử riêng của đội và remote trỏ sẵn đúng chỗ. Chưa thấy repo
-của đội thì báo BTC — repo tự tạo nằm ngoài org sẽ không được chấm.
+API tạo job trong database; worker gọi Qwen, lưu bằng chứng và báo cáo nháp. Frontend polling tiến độ, hiển thị kết quả để con người kiểm duyệt.
 
-### 2. Cài môi trường
+**Trạng thái thực tế:** LangGraph hiện là khung mẫu, router chat chưa được mount vào API chính. Vector Store chưa tích hợp; OpenAI helper chưa được các node gọi. Database quan hệ và media storage không phải Vector Store.
 
-```bash
-python3.11 -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 3. Cấu hình biến môi trường
-
-```bash
-cp .env.example .env
-```
-
-Mở `.env` và điền `OPENAI_API_KEY`. Riêng `AI_LOG_API_KEY`, mỗi thành viên tự
-tạo key riêng tại [dashboard Phoenix](https://phoenix.note.transformerlabs.ai/api-keys)
-rồi thay vào chỗ `<get-your-api-key-from-dashboard-phoenix>` — giá trị trong
-`.env.example` chỉ là placeholder, để nguyên thì log không vào được hệ thống chấm.
-
-### 4. Cài hook ghi log AI
-
-```bash
-bash scripts/setup_hooks.sh                                      # Linux / macOS / Git Bash
-powershell -ExecutionPolicy Bypass -File scripts\setup_hooks.ps1 # Windows PowerShell
-```
-
-Chạy một lần sau khi clone. Hook ghi lại prompt khi bạn dùng Claude Code, Cursor,
-Codex CLI, Gemini CLI, Antigravity hoặc GitHub Copilot, và cài pre-push hook để
-đẩy log lên server.
-
-### 5. Chạy server
-
-```bash
-uvicorn api.main:app --reload --port 8000
-```
-
-Swagger UI ở <http://localhost:8000/docs>. Hoặc dùng `make run`, `make test`,
-`make lint` — xem `Makefile`.
-
-## Cấu trúc thư mục
-
-```
-backend/
-  agents/            LangGraph agent
-    graph.py         State graph (nodes + edges)
-    state.py         State schema (TypedDict)
-    nodes/           Node functions
-    tools/           Agent tools (@tool)
-  models/schemas.py  Pydantic schemas
-  services/llm.py    LLM client
-  config.py          Pydantic Settings
-  worker.py          Analysis worker
-api/                 FastAPI routes and app entry point
-frontend/            Next.js frontend
-tests/               Backend and API pytest suite
-scripts/             Hook ghi log AI + installer
-docs/
-  guide/             Technical Guidebook (nguồn của bản online)
-  architecture_diagram.md
-eval/                Kết quả evaluation
-presentation/        Slide và video Demo Day
-.claude/ .codex/ .cursor/ .gemini/ .agents/ .github/hooks/
-                     Config hook cho từng công cụ
-.github/workflows/   CI
-Dockerfile           Multi-stage build
-docker-compose.yml   Frontend/API/worker/Ollama, SQLite và volumes
-README_boilerplate.md  Khung README cho dự án của đội
-```
-
-## Technical Guidebook
-
-| Chương | Nội dung | Thời gian |
-|---|---|---|
-| 1 | Lời mở đầu — mục tiêu, cách sử dụng | 15 phút |
-| 2 | Khởi tạo dự án — clone, setup, git workflow | 4 giờ |
-| 3 | Thiết kế kiến trúc — 3-tier, diagram, ADR | 6 giờ |
-| 4 | LangGraph Agent — state, node, edge, tool, RAG | 8 giờ |
-| 5 | FastAPI — routes, validation, error handling, streaming | 6 giờ |
-| 6 | Giao diện — Next.js và Streamlit | 6 giờ |
-| 7 | DevOps — Docker, CI/CD, deploy, logging | 6 giờ |
-| 8 | Kiểm thử — unit test, integration test, RAGAS | 4 giờ |
-| 9 | Demo Day — 10 deliverables, checklist | 2 giờ |
-| 10 | Tài nguyên — khoá học, tài liệu, BMAD method | tham khảo |
-
-Đọc online tại <https://phoenix.note.transformerlabs.ai/technical-book>: đăng
-nhập bằng GitHub (đúng account đã được BTC mời vào org của khoá), chọn tab
-**Technical Book** ở sidebar trái. Bản offline nằm trong `docs/guide/`, mở được
-bằng bất kỳ markdown viewer nào.
-
-## 10 deliverables cho Demo Day
-
-| # | Deliverable | Vị trí | Template lo tới đâu |
-|---|---|---|---|
-| 1 | Source code | `frontend/`, `backend/`, `api/` | Khung sẵn |
-| 2 | README | copy `README_boilerplate.md` thành `README.md` | Khung sẵn |
-| 3 | Architecture diagram | `docs/architecture_diagram.md` | Khung sẵn |
-| 4 | AI logs | LangSmith (3 biến môi trường) + auto AI usage logging | Cấu hình sẵn |
-| 5 | Live URL | deploy lên Render/Vercel | CI/CD sẵn |
-| 6 | Video demo | `presentation/` | Đội tự làm |
-| 7 | Pitch deck | `presentation/` | Đội tự làm |
-| 8 | Development journal | `JOURNAL.md` | Khung sẵn |
-| 9 | Worklog | `WORKLOG.md` | Khung sẵn |
-| 10 | Evaluation evidence | `eval/` | Đội tự làm |
+Xem [kiến trúc chi tiết, luồng xử lý và nguồn code đối chiếu](docs/architecture_diagram.md).
 
 ## Tech stack
 
-| Lớp | Công nghệ |
+| Thành phần | Công nghệ |
 |---|---|
-| Agent | LangGraph + LangChain 0.3 |
-| Backend | FastAPI 0.115 + Uvicorn |
-| LLM | OpenAI, mặc định `gpt-4o-mini` (đổi trong `backend/config.py`) |
-| Giao diện | Next.js hoặc Streamlit (đội tự chọn, hướng dẫn ở chương 6) |
-| Lint / test | ruff + pytest 8 |
-| DevOps | Docker + GitHub Actions |
+| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
+| Backend / API | Python 3.11, FastAPI, Uvicorn, Pydantic |
+| AI / video | Qwen2.5-VL 7B qua Ollama, FFmpeg / FFprobe; hỗ trợ cấu hình Qwen3.5 9B |
+| Agent framework | LangGraph, LangChain, tích hợp OpenAI trong các module agent |
+| Database | SQLAlchemy, Alembic; SQLite cho local, PostgreSQL cho triển khai dùng database riêng |
+| Kiểm thử | pytest, pytest-asyncio, Playwright |
+| Chất lượng code | Ruff, ESLint, TypeScript typecheck |
+| Đóng gói / CI | Docker Compose, GitHub Actions |
 
-## AI usage logging
+## Hướng dẫn cài đặt
 
-Mọi prompt được ghi vào `.ai-log/session.jsonl` và tự động gửi lên grading server
-ở bước pre-push.
+### Yêu cầu
 
-| Công cụ | Cấu hình | Thời điểm ghi |
-|---|---|---|
-| Claude Code | `.claude/settings.json` | mỗi prompt (`UserPromptSubmit`) |
-| Cursor | `.cursor/hooks.json` | mỗi prompt và khi dừng |
-| OpenAI Codex CLI | `.codex/hooks.json` | mỗi prompt và khi dừng |
-| Gemini CLI | `.gemini/settings.json` | mỗi lượt agent chạy |
-| GitHub Copilot | `.github/hooks/hooks.json` | mỗi prompt và cuối session |
-| Antigravity IDE | `.agents/hooks.json` | mỗi prompt, kèm lần quét lại lúc `git push` |
+Chọn một trong hai cách chạy:
 
-Dùng ChatGPT hay công cụ web khác thì log thủ công:
+- **Docker:** Git, Docker Engine/Desktop có Docker Compose v2. Nếu dùng GPU NVIDIA, cần driver và NVIDIA Container Toolkit phù hợp; Docker Desktop Windows dùng WSL2.
+- **Native:** Git, Python 3.11, Node.js 20 và npm, Ollama, FFmpeg và FFprobe có trong `PATH`.
 
-```bash
-bash scripts/_pyrun.sh scripts/log_manual.py --tool chatgpt --prompt "What you asked"
+Model 7B cần đủ RAM/VRAM và dung lượng lưu trữ. Có thể chạy bằng CPU nhưng suy luận chậm hơn GPU. Lần đầu cần Internet để tải dependency và model.
+
+### Clone repository
+
+```powershell
+git clone https://github.com/namhv521/IncidentLens.git
+cd IncidentLens
 ```
 
-## Đóng góp
+### Cách 1: Docker local với SQLite
 
-Repo này là open source. Đọc [CONTRIBUTING.md](CONTRIBUTING.md) trước khi mở PR.
+Từ thư mục gốc, chạy:
 
-Nội dung trong `docs/guide/` là nguồn của Technical Book và được đồng bộ lên bản
-online, nên mọi thay đổi ở đó cần review của
-[@AI20K-Build-Phase/book-maintainers](https://github.com/orgs/AI20K-Build-Phase/teams/book-maintainers)
-— xem [.github/CODEOWNERS](.github/CODEOWNERS).
+```powershell
+docker compose -f docker-compose.qwen-local.yml up -d --build
+docker compose -f docker-compose.qwen-local.yml logs -f --tail 50
+```
 
-Báo lỗ hổng bảo mật theo [SECURITY.md](SECURITY.md), đừng mở public issue.
+Container đóng gói frontend, API, worker, Ollama và công cụ xử lý video. Lần đầu tự tải model; đợi thông báo `IncidentLens ready` trước khi gửi phân tích.
+
+Mở [IncidentLens local](http://127.0.0.1:8089/incidents).
+
+Nếu cần tạo tài khoản quản trị đầu tiên, mở terminal khác và chạy sau khi ứng dụng sẵn sàng:
+
+```powershell
+docker compose -f docker-compose.qwen-local.yml exec app python -m backend.cli.users create-admin --email admin@example.com --name "Local Admin"
+```
+
+CLI yêu cầu nhập mật khẩu ẩn. Đăng nhập và đổi mật khẩu tạm theo hướng dẫn của ứng dụng.
+
+**GPU NVIDIA:** thay lệnh khởi động bằng:
+
+```powershell
+docker compose -f docker-compose.qwen-local.yml -f docker-compose.qwen-gpu.yml up -d --build
+```
+
+**Lưu ý Compose:** `docker-compose.yml` mặc định còn nạp cấu hình PostgreSQL cloud và yêu cầu `P076_DATABASE_URL`. Dùng lệnh có `-f docker-compose.qwen-local.yml` ở trên để chạy độc lập với SQLite.
+
+Dừng ứng dụng, giữ dữ liệu và model:
+
+```powershell
+docker compose -f docker-compose.qwen-local.yml down
+```
+
+Không thêm `-v` nếu cần giữ volume dữ liệu và model. Hướng dẫn vận hành chi tiết: [Docker + Qwen](docs/docker_qwen7b.md).
+
+### Cách 2: Native trên Windows PowerShell
+
+Tại thư mục gốc, tạo môi trường Python và cấu hình local. Nếu đã có `.env`, giữ bản hiện tại và đối chiếu với file mẫu trước khi sửa.
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.ollama.example .env
+Copy-Item frontend/.env.example frontend/.env.local
+python -m alembic upgrade head
+```
+
+Trong `.env`, đặt `LANGCHAIN_TRACING_V2=false` nếu chưa cấu hình LangSmith. Mẫu Ollama dùng SQLite và endpoint `http://127.0.0.1:11434/v1/chat/completions`; không cần OpenAI API key cho luồng Qwen local.
+
+Cài frontend:
+
+```powershell
+cd frontend
+npm ci
+cd ..
+```
+
+Trong `frontend/.env.local`, dùng API thật và bật xác thực:
+
+```dotenv
+NEXT_PUBLIC_USE_MOCK_API=false
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+NEXT_PUBLIC_ENABLE_AUTH=true
+BACKEND_INTERNAL_URL=http://127.0.0.1:8000
+```
+
+## Cách chạy
+
+Nếu chọn Docker, dùng lệnh khởi động trong phần cài đặt. Nếu chọn native, mở các terminal PowerShell riêng tại thư mục gốc:
+
+**Terminal 1 — Ollama:**
+
+```powershell
+ollama serve
+```
+
+Nếu Ollama đã chạy nền, dùng tiến trình hiện tại. Tại terminal khác, tải model một lần:
+
+```powershell
+ollama pull qwen2.5vl:7b
+```
+
+**Terminal 2 — API:**
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+**Terminal 3 — worker phân tích:**
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m backend.gpu_worker
+```
+
+API tiếp nhận job; worker xử lý job. Chỉ khởi động API sẽ không hoàn tất phân tích video.
+
+**Terminal 4 — frontend:**
+
+```powershell
+cd frontend
+npm run dev
+```
+
+Tạo quản trị viên lần đầu sau khi migration hoàn tất, trong terminal đã kích hoạt `.venv`:
+
+```powershell
+python -m backend.cli.users create-admin --email admin@example.com --name "Local Admin"
+```
+
+- Giao diện native: [http://localhost:3000/incidents](http://localhost:3000/incidents).
+- Swagger API native: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs), khi chạy môi trường development.
+
+### Luồng sử dụng
+
+1. Đăng nhập bằng tài khoản đã được tạo.
+2. Mở trang tạo sự cố, tải MP4 và CSV nếu có.
+3. Gửi yêu cầu phân tích và theo dõi tiến độ.
+4. Mở workspace, đối chiếu video, timeline và bằng chứng.
+5. Chỉnh sửa báo cáo, gửi duyệt và thực hiện thao tác theo quyền được cấp.
+
+## Cấu trúc thư mục
+
+```text
+IncidentLens/
+├── api/                     # FastAPI app, routes và hợp đồng API
+├── backend/
+│   ├── agents/              # Các module agent LangGraph
+│   ├── alembic/             # Database migrations
+│   ├── cli/                 # CLI quản trị tài khoản
+│   ├── models/              # Database models và schema
+│   ├── prompts/             # Prompt phân tích
+│   ├── services/            # Xử lý video, telemetry, AI và báo cáo
+│   ├── config.py            # Cấu hình ứng dụng
+│   ├── gpu_worker.py        # Consumer job cho Ollama và media local
+│   ├── worker.py            # Xử lý job phân tích V1
+│   └── worker_v2.py         # Luồng xử lý V2
+├── frontend/                # Next.js app, components, assets và E2E tests
+├── deploy/                  # Docker runtime và cấu hình triển khai
+├── docs/                    # Tài liệu kỹ thuật, vận hành và guidebook
+├── tests/                   # Backend/API tests
+├── eval/                    # Tài liệu và kết quả đánh giá
+├── presentation/            # Tài liệu demo, slide và video
+├── scripts/                 # Công cụ hỗ trợ và hook AI logging
+├── .github/workflows/       # CI workflows
+├── .env.ollama.example      # Cấu hình native Ollama local
+├── docker-compose.yml       # Compose mặc định có PostgreSQL cloud override
+├── docker-compose.qwen-local.yml # Stack local với SQLite
+├── requirements.txt         # Python dependencies
+├── JOURNAL.md               # Nhật ký phát triển
+└── WORKLOG.md               # Công việc của nhóm
+```
+
+## Team members
+
+Nhóm **P-076**, gồm bốn thành viên. Phần đóng góp dưới đây tổng hợp từ lịch sử Git và worklog; không thay thế bảng phân công chính thức của nhóm.
+
+| Thành viên / tên trong Git | Tài khoản được ghi nhận | Đóng góp trong repository |
+|---|---|---|
+| Nam Hoang | `namhv521` / `susois` | Tích hợp hệ thống, pipeline AI/telemetry, sửa lỗi và kiểm thử |
+| Nguyễn Văn Hồng | `hongneuk65` | Frontend, workspace báo cáo, UX và cấu hình hook |
+| Nguyễn Hoàng | `hoang9605` | Backend, tài liệu kiến trúc và journal |
+| LeTuanDat | `LeTuanDat` / `TuanDatt08` | Tích hợp Qwen 9B và đồng bộ source |
+
+## Kiểm tra và tài liệu liên quan
+
+Chạy backend checks tại thư mục gốc, trong môi trường Python đã cài dependency:
+
+```powershell
+python -m pytest
+python -m ruff check backend api tests
+```
+
+Chạy frontend checks tại `frontend/`:
+
+```powershell
+npm run typecheck
+npm run lint
+npm run build
+```
+
+- [Tài liệu API](api/README.md)
+- [Tài liệu frontend](frontend/README.md)
+- [Vận hành Docker + Ollama](docs/docker_qwen7b.md)
+- [Architecture diagram](docs/architecture_diagram.md)
+- [Worklog](WORKLOG.md) và [Development journal](JOURNAL.md)
+- [Pitch deck Demo Day 10 slide](presentation/output/pitch_deck.pptx) và [kịch bản thuyết trình](presentation/README.md)
+- [Hướng dẫn đóng góp](CONTRIBUTING.md) và [Chính sách bảo mật](SECURITY.md)
+
+Các địa chỉ localhost trong README dành cho chạy local. Cấu hình triển khai cloud cần database, lưu trữ media, worker và inference được kết nối đầy đủ.
 
 ## License
 
-[MIT](LICENSE) — dùng tự do cho mục đích giáo dục.
-
-Docker Ollama + Qwen 7B: chạy `docker compose up -d --build`, mở `http://127.0.0.1:8089/incidents`. Xem [hướng dẫn](docs/docker_qwen7b.md).
+Dự án sử dụng [MIT License](LICENSE).
