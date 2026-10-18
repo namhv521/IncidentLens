@@ -27,236 +27,199 @@ Kết quả AI là đầu vào hỗ trợ kiểm duyệt. Kết quả không ph�
 
 ### Workspace kiểm duyệt
 
-![Workspace kiểm duyệt sự cố trên desktop](frontend/docs/ui-fix-evidence/review-desktop.png)
+![Reviewer kiểm tra hồ sơ INC-63EB4A5673E7 với video thực tế](docs/assets/incident-INC-63EB4A5673E7-reviewer.jpg)
 
-Ảnh chụp giao diện đã lưu trong repository; dữ liệu hiển thị có thể là dữ liệu demo tại thời điểm chụp.
+Ảnh workspace chụp từ [hồ sơ INC-63EB4A5673E7](https://c4-app-076.vercel.app/incidents/INC-63EB4A5673E7), tài khoản **Reviewer**, video tại mốc **7,7 giây**. Trang giới thiệu ở trên là ảnh giao diện landing page.
 
 ## Architecture Diagram
 
-Đường liền mô tả luồng phân tích hiện tại; nét đứt là kết nối chưa tích hợp.
+Kiến trúc triển khai hiện tại: **Vercel chạy frontend; Render chạy API; Vast.ai chạy media service, worker và Qwen3.5 trên GPU; Neon lưu PostgreSQL dùng chung**.
 
 ```mermaid
 flowchart TB
-    User["Người phân tích / Người kiểm duyệt"]
-    subgraph App["Ứng dụng IncidentLens"]
-        FE["Frontend · Next.js / React<br/>Upload, tiến độ, bằng chứng, báo cáo"]
-        API["Backend API · FastAPI<br/>Auth, incidents, jobs, review, audit"]
-        DB[("SQLite local / PostgreSQL<br/>Metadata, hàng đợi job, báo cáo, audit")]
-        Files[("Media storage<br/>MP4, CSV, frame, clip, artifacts")]
-        Worker["Analysis Worker · Python<br/>Nhận job, FFmpeg, telemetry, kiểm tra kết quả"]
+    Engineer["Engineer<br/>Upload, phân tích, sửa báo cáo, gửi duyệt"]
+    Reviewer["Reviewer<br/>Đối chiếu bằng chứng, phê duyệt / từ chối"]
+    FE["Vercel · Next.js frontend<br/>Upload, polling, review"]
+    API["Render · FastAPI<br/>Auth, incidents, jobs, reports, audit"]
+    DB[("Neon PostgreSQL<br/>Metadata, queue, reports, auth, audit")]
+    subgraph GPU["Vast.ai GPU"]
+        Media["Private media API<br/>api.gpu_media · 127.0.0.1:18000"]
+        Files[("Media storage<br/>MP4, CSV, frames, evidence")]
+        Worker["backend.gpu_worker<br/>FFmpeg, telemetry, phân tích V1"]
+        Qwen["Ollama · Qwen3.5 9B<br/>127.0.0.1:11434 · GPU inference"]
     end
-    subgraph Inference["Inference service · local hoặc máy GPU riêng"]
-        Qwen["Ollama HTTP API<br/>Qwen2.5-VL 7B / Qwen3.5 9B"]
-    end
-    subgraph Extension["Module mẫu / mở rộng · chưa nối vào luồng chính"]
-        Agent["LangGraph Agent<br/>analyze → respond · node mẫu"]
-        Vector[("Vector Store / RAG<br/>Chưa tích hợp")]
-        External["External APIs · OpenAI<br/>Có helper, chưa được node gọi"]
-    end
-    User --> FE
-    FE <-->|"HTTP upload / polling / review"| API
+    Engineer -->|"Tạo hồ sơ / gửi duyệt"| FE
+    Reviewer -->|"Xem báo cáo / quyết định kiểm duyệt"| FE
+    FE <-->|"Same-origin /api/v1 · Next.js rewrite"| API
     API <-->|"SQLAlchemy"| DB
-    API <-->|"Lưu upload / phục vụ media"| Files
-    Worker <-->|"Claim job / tiến độ / kết quả"| DB
-    Worker <-->|"Đọc nguồn / ghi bằng chứng"| Files
-    Worker <-->|"HTTP · frame và ngữ cảnh / JSON"| Qwen
-    API -.->|"Router chat mẫu chưa mount"| Agent
-    Agent -.->|"Retrieval dự kiến"| Vector
-    Agent -.->|"Tích hợp dự kiến"| External
+    API <-->|"Upload / media qua SSH tunnel"| Media
+    Media <-->|"Lưu nguồn / đọc evidence"| Files
+    Media <-->|"Cùng DB và session"| DB
+    Worker <-->|"Claim job / trạng thái / kết quả"| DB
+    Worker <-->|"Đọc nguồn / ghi evidence"| Files
+    Worker <-->|"OpenAI-compatible HTTP · frame / JSON"| Qwen
 ```
 
-API tạo job trong database; worker gọi Qwen, lưu bằng chứng và báo cáo nháp. Frontend polling tiến độ, hiển thị kết quả để con người kiểm duyệt.
+API Render tạo job trong Neon. Upload V1 và một số route media được chuyển qua SSH tới Vast; worker chỉ nhận job khi có file trên GPU và Ollama sẵn sàng. Frontend polling tiến độ qua API. **Render không chạy worker hoặc model** trong cấu hình này.
 
-**Trạng thái thực tế:** LangGraph hiện là khung mẫu, router chat chưa được mount vào API chính. Vector Store chưa tích hợp; OpenAI helper chưa được các node gọi. Database quan hệ và media storage không phải Vector Store.
+Engineer chuẩn bị và gửi báo cáo. Reviewer đối chiếu video/bằng chứng rồi phê duyệt hoặc từ chối. Backend kiểm tra quyền và lưu phiên bản, quyết định kiểm duyệt cùng audit vào Neon.
 
-Xem [kiến trúc chi tiết, luồng xử lý và nguồn code đối chiếu](docs/architecture_diagram.md).
+Xem [kiến trúc chi tiết](docs/architecture_diagram.md).
 
 ## Tech stack
 
-| Thành phần | Công nghệ |
+| Thành phần | Công nghệ / nơi chạy |
 |---|---|
-| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
-| Backend / API | Python 3.11, FastAPI, Uvicorn, Pydantic |
-| AI / video | Qwen2.5-VL 7B qua Ollama, FFmpeg / FFprobe; hỗ trợ cấu hình Qwen3.5 9B |
-| Agent framework | LangGraph, LangChain, tích hợp OpenAI trong các module agent |
-| Database | SQLAlchemy, Alembic; SQLite cho local, PostgreSQL cho triển khai dùng database riêng |
-| Kiểm thử | pytest, pytest-asyncio, Playwright |
-| Chất lượng code | Ruff, ESLint, TypeScript typecheck |
-| Đóng gói / CI | Docker Compose, GitHub Actions |
+| Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS / Vercel |
+| Backend API | Python 3.11, FastAPI, Uvicorn, Pydantic / Render |
+| AI inference | **qwen3.5:9b**, Ollama, GPU / Vast.ai |
+| Worker / media | Python, FFmpeg / FFprobe, private FastAPI / Vast.ai |
+| Database | PostgreSQL trên Neon, SQLAlchemy, Alembic |
 
-## Hướng dẫn cài đặt
-
-### Yêu cầu
-
-Chọn một trong hai cách chạy:
-
-- **Docker:** Git, Docker Engine/Desktop có Docker Compose v2. Nếu dùng GPU NVIDIA, cần driver và NVIDIA Container Toolkit phù hợp; Docker Desktop Windows dùng WSL2.
-- **Native:** Git, Python 3.11, Node.js 20 và npm, Ollama, FFmpeg và FFprobe có trong `PATH`.
-
-Model 7B cần đủ RAM/VRAM và dung lượng lưu trữ. Có thể chạy bằng CPU nhưng suy luận chậm hơn GPU. Lần đầu cần Internet để tải dependency và model.
+## Hướng dẫn cài đặt và cấu hình
 
 ### Clone repository
 
+Repository gốc trong workspace chung **AI20K-Build-Phase-Cohort-4** đang **private**. Dùng tài khoản GitHub đã được cấp quyền:
+
 ```powershell
-git clone https://github.com/namhv521/IncidentLens.git
-cd IncidentLens
+git clone https://github.com/AI20K-Build-Phase-Cohort-4/P-076.git
+cd P-076
 ```
 
-### Cách 1: Docker local với SQLite
+### Cấu hình theo dịch vụ
 
-Từ thư mục gốc, chạy:
+Không dùng một file env chung cho mọi máy. Điền secret trong dashboard hoặc file riêng trên server:
 
-```powershell
-docker compose -f docker-compose.qwen-local.yml up -d --build
-docker compose -f docker-compose.qwen-local.yml logs -f --tail 50
+| Dịch vụ | Env mẫu | Các biến cần đồng bộ |
+|---|---|---|
+| Vercel | [frontend/.env.example](frontend/.env.example) | `BACKEND_INTERNAL_URL` là origin HTTPS của Render; API frontend dùng `/api/v1` |
+| Render API | [.env.example](.env.example) | PostgreSQL, cookie HTTPS, CORS, private media URL và SSH secrets |
+| Vast worker + media | [deploy/vast/worker.env.example](deploy/vast/worker.env.example) | Cùng PostgreSQL và CORS với Render; file media nằm trên Vast; model `qwen3.5:9b` |
+
+- **Render và Vast:** `DATABASE_URL` trỏ cùng một Neon database để dùng chung incident, queue, report và session. `DATABASE_CLOUD=true`, URL yêu cầu SSL.
+- **Production auth:** `APP_ENV=production`, `AUTH_COOKIE_SECURE=true`, `CORS_ORIGINS` là origin HTTPS chính xác của frontend.
+- **Render:** `GPU_MEDIA_BASE_URL=http://127.0.0.1:18000`; `GPU_SSH_TARGET`, `GPU_SSH_PORT`, `GPU_SSH_PRIVATE_KEY`, `GPU_SSH_KNOWN_HOSTS` thiết lập tunnel tới Vast.
+- **Vast:** `GPU_MEDIA_BASE_URL` phải trống; media và worker đọc cùng `INCIDENT_STORAGE_DIR`. Endpoint Qwen loopback `11434` là của máy GPU, không phải máy cá nhân.
+- **Qwen3.5:** `QWEN_RUNTIME=ollama`, `QWEN_OLLAMA_MODEL=qwen3.5:9b`, `QWEN_REASONING_EFFORT=none`. Code hiện chấp nhận tag 9B này.
+- **Vercel:** không đặt URL localhost, DB credential hoặc SSH key. Thay biến môi trường cần redeploy để Next.js cập nhật rewrite/build.
+
+Mẫu `.env.ollama.example` đã ngừng dùng; `.env.vps.example` thuộc phương án VPS/Caddy cũ. Các Compose all-in-one còn ép Qwen2.5 nên không phải lệnh khởi động của deployment này. README không còn hướng dẫn chạy full stack hoặc model trên máy cá nhân.
+
+### Render: API và SSH tunnel
+
+Dùng Dockerfile ở root repository. Dockerfile hiện chạy:
+
+```text
+python -m deploy.render_start
 ```
 
-Container đóng gói frontend, API, worker, Ollama và công cụ xử lý video. Lần đầu tự tải model; đợi thông báo `IncidentLens ready` trước khi gửi phân tích.
+Entry point này khởi động API và duy trì SSH media tunnel khi đã cung cấp đủ SSH secrets. Không override về lệnh Uvicorn đơn lẻ nếu cần tunnel. Khóa SSH phải được Vast cho phép forward tới `127.0.0.1:18000`, với host key đã xác minh.
 
-Mở [IncidentLens local](http://127.0.0.1:8089/incidents).
+Áp dụng migration bằng tác vụ riêng/pre-deploy có cùng biến môi trường trước khi đưa API mới vào sử dụng:
 
-Nếu cần tạo tài khoản quản trị đầu tiên, mở terminal khác và chạy sau khi ứng dụng sẵn sàng:
-
-```powershell
-docker compose -f docker-compose.qwen-local.yml exec app python -m backend.cli.users create-admin --email admin@example.com --name "Local Admin"
-```
-
-CLI yêu cầu nhập mật khẩu ẩn. Đăng nhập và đổi mật khẩu tạm theo hướng dẫn của ứng dụng.
-
-**GPU NVIDIA:** thay lệnh khởi động bằng:
-
-```powershell
-docker compose -f docker-compose.qwen-local.yml -f docker-compose.qwen-gpu.yml up -d --build
-```
-
-**Lưu ý Compose:** `docker-compose.yml` mặc định còn nạp cấu hình PostgreSQL cloud và yêu cầu `P076_DATABASE_URL`. Dùng lệnh có `-f docker-compose.qwen-local.yml` ở trên để chạy độc lập với SQLite.
-
-Dừng ứng dụng, giữ dữ liệu và model:
-
-```powershell
-docker compose -f docker-compose.qwen-local.yml down
-```
-
-Không thêm `-v` nếu cần giữ volume dữ liệu và model. Hướng dẫn vận hành chi tiết: [Docker + Qwen](docs/docker_qwen7b.md).
-
-### Cách 2: Native trên Windows PowerShell
-
-Tại thư mục gốc, tạo môi trường Python và cấu hình local. Nếu đã có `.env`, giữ bản hiện tại và đối chiếu với file mẫu trước khi sửa.
-
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.ollama.example .env
-Copy-Item frontend/.env.example frontend/.env.local
+```bash
 python -m alembic upgrade head
 ```
 
-Trong `.env`, đặt `LANGCHAIN_TRACING_V2=false` nếu chưa cấu hình LangSmith. Mẫu Ollama dùng SQLite và endpoint `http://127.0.0.1:11434/v1/chat/completions`; không cần OpenAI API key cho luồng Qwen local.
+Không dùng lệnh migration làm tiến trình web lâu dài. Worker không được cài hoặc khởi động trên Render trong cấu hình này.
 
-Cài frontend:
+### Vast.ai: worker, media và Qwen GPU
 
-```powershell
-cd frontend
-npm ci
-cd ..
+Các lệnh dưới đây chạy **trên Linux của instance Vast**, với source tại `/workspace/incidentlens`, Python environment tại `/workspace/incidentlens-venv` và template có Supervisor tương thích `deploy/vast/install_worker.sh`.
+
+Cài dependency trong môi trường GPU đã chuẩn bị:
+
+```bash
+cd /workspace/incidentlens
+/workspace/incidentlens-venv/bin/python -m pip install -r requirements.txt
+test -f worker.env || cp deploy/vast/worker.env.example worker.env
+chmod 600 worker.env
 ```
 
-Trong `frontend/.env.local`, dùng API thật và bật xác thực:
+Chỉ copy mẫu khi chưa có `worker.env`; nếu file đã tồn tại, đối chiếu và sửa các biến cần thiết để giữ secret và cấu hình vận hành. Điền cùng Neon URL/CORS với Render. Máy này cần FFmpeg/FFprobe, Ollama hỗ trợ model đang dùng và NVIDIA GPU/driver hoạt động.
 
-```dotenv
-NEXT_PUBLIC_USE_MOCK_API=false
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
-NEXT_PUBLIC_ENABLE_AUTH=true
-BACKEND_INTERNAL_URL=http://127.0.0.1:8000
+Kiểm tra model đang được nhóm vận hành, không chạy thêm Ollama trùng cổng:
+
+```bash
+nvidia-smi
+ollama list
+curl --fail http://127.0.0.1:11434/api/show \
+  -H 'Content-Type: application/json' -d '{"model":"qwen3.5:9b"}'
+ollama ps
 ```
 
-## Cách chạy
+`/api/show` phải có capability `vision`. Sau request suy luận, dùng `ollama ps` và `nvidia-smi` kiểm tra model có sử dụng GPU. Model tồn tại trong danh sách chưa chứng minh suy luận dùng GPU.
 
-Nếu chọn Docker, dùng lệnh khởi động trong phần cài đặt. Nếu chọn native, mở các terminal PowerShell riêng tại thư mục gốc:
+Cài các service và khởi động worker sau khi env, model và media đã sẵn sàng:
 
-**Terminal 1 — Ollama:**
-
-```powershell
-ollama serve
+```bash
+bash deploy/vast/install_worker.sh
+supervisorctl start incidentlens-gpu-worker
+supervisorctl status incidentlens-gpu-media incidentlens-gpu-worker
 ```
 
-Nếu Ollama đã chạy nền, dùng tiến trình hiện tại. Tại terminal khác, tải model một lần:
+Installer tự bật media service, nhưng **không tự bật worker**. Hai service cùng nạp `/workspace/incidentlens/worker.env`:
 
-```powershell
-ollama pull qwen2.5vl:7b
-```
+- Media: `api.gpu_media:app`, chỉ bind `127.0.0.1:18000`.
+- Worker: `backend.gpu_worker`, xử lý queue V1 và ghi kết quả vào Neon.
 
-**Terminal 2 — API:**
+Frontend đang tắt workspace V2. Không bật `NEXT_PUBLIC_ENABLE_V2_WORKSPACE` chỉ vì repo có worker V2: GPU media proxy hiện chỉ hỗ trợ các route V1 đã định nghĩa.
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
-```
+### Vercel: frontend
 
-**Terminal 3 — worker phân tích:**
+Đặt project root là `frontend`, dùng build `npm run build` và cấu hình theo `frontend/.env.example`. `BACKEND_INTERNAL_URL` chỉ gồm origin của Render, không thêm `/api/v1`. Frontend gửi API cùng origin; Next.js rewrite chuyển request sang Render. API backend vẫn quyết định quyền truy cập.
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-python -m backend.gpu_worker
-```
+## Cách chạy và kiểm tra
 
-API tiếp nhận job; worker xử lý job. Chỉ khởi động API sẽ không hoàn tất phân tích video.
+Người dùng truy cập frontend đã deploy, đăng nhập, tải MP4/CSV, gửi phân tích và xem kết quả trong workspace. Để phân tích hoàn tất cần **đồng thời**: Render API, Neon, SSH tunnel, Vast media service, Vast worker và Ollama/Qwen3.5.
 
-**Terminal 4 — frontend:**
+1. Kiểm tra API `/health` và `/api/v1/health` trên Render.
+2. Qua frontend, `/api/v1/auth/me` trả `401` khi chưa đăng nhập là trạng thái bình thường; `404/500` cần kiểm tra rewrite, deploy hoặc migration.
+3. Trên Vast, `curl --fail http://127.0.0.1:18000/health` kiểm tra media service.
+4. Kiểm tra model vision, GPU và trạng thái Supervisor như phần trên.
+5. Chạy một hồ sơ được phép dùng, đối chiếu job hoàn tất, video/evidence đọc được và report lưu trong đúng Neon database.
 
-```powershell
-cd frontend
-npm run dev
-```
-
-Tạo quản trị viên lần đầu sau khi migration hoàn tất, trong terminal đã kích hoạt `.venv`:
-
-```powershell
-python -m backend.cli.users create-admin --email admin@example.com --name "Local Admin"
-```
-
-- Giao diện native: [http://localhost:3000/incidents](http://localhost:3000/incidents).
-- Swagger API native: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs), khi chạy môi trường development.
+Khi Vast/tunnel mất kết nối, upload hoặc route media được proxy có thể trả `503 GPU_UNAVAILABLE`; metadata báo cáo vẫn phụ thuộc API/Neon. Khi worker dừng hoặc chưa có file nguồn/model, job không tự hoàn tất. API health thành công không phải bằng chứng pipeline AI hoạt động end-to-end.
 
 ### Luồng sử dụng
 
-1. Đăng nhập bằng tài khoản đã được tạo.
-2. Mở trang tạo sự cố, tải MP4 và CSV nếu có.
-3. Gửi yêu cầu phân tích và theo dõi tiến độ.
-4. Mở workspace, đối chiếu video, timeline và bằng chứng.
-5. Chỉnh sửa báo cáo, gửi duyệt và thực hiện thao tác theo quyền được cấp.
+1. Đăng nhập bằng tài khoản được cấp; đổi mật khẩu tạm nếu được yêu cầu.
+2. Tạo sự cố, tải MP4 và CSV tùy chọn.
+3. Gửi phân tích, theo dõi tiến độ.
+4. Đối chiếu video, timeline, bằng chứng và điểm chưa chắc chắn.
+5. Sửa báo cáo, gửi duyệt, phê duyệt/từ chối theo vai trò.
 
 ## Cấu trúc thư mục
 
 ```text
-IncidentLens/
-├── api/                     # FastAPI app, routes và hợp đồng API
+P-076/
+├── api/                      # FastAPI, routes và private GPU media adapter
 ├── backend/
-│   ├── agents/              # Các module agent LangGraph
-│   ├── alembic/             # Database migrations
-│   ├── cli/                 # CLI quản trị tài khoản
-│   ├── models/              # Database models và schema
-│   ├── prompts/             # Prompt phân tích
-│   ├── services/            # Xử lý video, telemetry, AI và báo cáo
-│   ├── config.py            # Cấu hình ứng dụng
-│   ├── gpu_worker.py        # Consumer job cho Ollama và media local
-│   ├── worker.py            # Xử lý job phân tích V1
-│   └── worker_v2.py         # Luồng xử lý V2
-├── frontend/                # Next.js app, components, assets và E2E tests
-├── deploy/                  # Docker runtime và cấu hình triển khai
-├── docs/                    # Tài liệu kỹ thuật, vận hành và guidebook
-├── tests/                   # Backend/API tests
-├── eval/                    # Tài liệu và kết quả đánh giá
-├── presentation/            # Tài liệu demo, slide và video
-├── scripts/                 # Công cụ hỗ trợ và hook AI logging
-├── .github/workflows/       # CI workflows
-├── .env.ollama.example      # Cấu hình native Ollama local
-├── docker-compose.yml       # Compose mặc định có PostgreSQL cloud override
-├── docker-compose.qwen-local.yml # Stack local với SQLite
-├── requirements.txt         # Python dependencies
-├── JOURNAL.md               # Nhật ký phát triển
-└── WORKLOG.md               # Công việc của nhóm
+│   ├── agents/               # LangGraph mẫu
+│   ├── alembic/              # Database migrations
+│   ├── cli/                  # Quản trị tài khoản
+│   ├── models/               # Database models và schema
+│   ├── prompts/              # Prompt phân tích và tổng hợp
+│   ├── services/             # Video, telemetry, provider, reports
+│   ├── config.py             # Settings và validation
+│   ├── gpu_worker.py         # Worker V1 trên Vast
+│   ├── worker.py             # Job processing V1
+│   └── worker_v2.py          # Luồng V2 riêng
+├── frontend/                 # Next.js, deploy trên Vercel
+├── deploy/
+│   ├── render_start.py       # Render API + SSH media tunnel
+│   └── vast/                 # Worker env và Supervisor installer
+├── docs/                     # Tài liệu kỹ thuật
+├── tests/                    # Backend/API tests
+├── eval/                     # Protocol và kết quả đánh giá
+├── presentation/             # Pitch deck và kịch bản demo
+├── .github/workflows/        # CI
+├── .env.example              # Render API env mẫu
+├── Dockerfile                # Image API cho Render
+├── requirements.txt          # Python dependencies
+├── JOURNAL.md                # Nhật ký phát triển
+└── WORKLOG.md                # Công việc của nhóm
 ```
 
 ## Team members
@@ -289,13 +252,12 @@ npm run build
 
 - [Tài liệu API](api/README.md)
 - [Tài liệu frontend](frontend/README.md)
-- [Vận hành Docker + Ollama](docs/docker_qwen7b.md)
 - [Architecture diagram](docs/architecture_diagram.md)
 - [Worklog](WORKLOG.md) và [Development journal](JOURNAL.md)
 - [Pitch deck Demo Day 10 slide](presentation/output/pitch_deck.pptx) và [kịch bản thuyết trình](presentation/README.md)
 - [Hướng dẫn đóng góp](CONTRIBUTING.md) và [Chính sách bảo mật](SECURITY.md)
 
-Các địa chỉ localhost trong README dành cho chạy local. Cấu hình triển khai cloud cần database, lưu trữ media, worker và inference được kết nối đầy đủ.
+Các địa chỉ loopback trong README thuộc **server Render hoặc Vast tương ứng**. Tài liệu đối chiếu source và kiến trúc nhóm xác nhận; không thay thế kiểm tra trạng thái live của các dịch vụ.
 
 ## License
 
