@@ -5,7 +5,11 @@ frames and decides. Variant A = full frame at 640 px (what the backend sends tod
 variant B = road crop 1200x480 with the windshield ornament masked (hand-picked
 coordinates for this clip).
 """
-import base64, json, sys, time, urllib.request
+import base64
+import json
+import sys
+import time
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).parent

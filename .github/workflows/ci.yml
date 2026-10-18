@@ -34,6 +34,7 @@ jobs:
         run: python -m pytest tests/ -v --tb=short -p pytest_asyncio.plugin
         env:
           APP_ENV: test
+          DATABASE_CLOUD: "false"
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
           PYTHONUTF8: "1"
 
@@ -52,4 +53,5 @@ jobs:
           npm --prefix frontend run lint
           node tests/frontend/report-editor-check.mjs
           node tests/frontend/v2-client-check.mjs
+          node -e "const fs = require('node:fs'); const cp = require('node:child_process'); for (const file of fs.readdirSync('frontend/tests').filter(name => name.endsWith('regression.cjs')).sort()) cp.execFileSync(process.execPath, ['tests/' + file], { cwd: 'frontend', stdio: 'inherit' });"
           npm --prefix frontend run build

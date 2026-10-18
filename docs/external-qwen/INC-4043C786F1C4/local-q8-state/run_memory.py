@@ -10,7 +10,11 @@ On POSSIBLE/LIKELY, Qwen re-evaluates the whole progression (frames around the a
 Image per frame: Qwen auto crop when the motorcycle was detected (9.3-10.5 s), else the B road crop.
 Expected: 8.3-9.7 NORMAL, 9.9 UNSTABLE (swerve), 10.0-10.2 UNSTABLE/FALLEN, 10.5 FALLEN, later NOT_VISIBLE.
 """
-import base64, json, sys, time, urllib.request
+import base64
+import json
+import sys
+import time
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).parent

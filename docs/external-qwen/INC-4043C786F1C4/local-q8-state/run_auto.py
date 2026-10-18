@@ -5,7 +5,10 @@
   python run_auto.py compare  -> free-text change for consecutive frames (3 samples each) and vs the first
                                  detected frame; code flags fall keywords and votes.
 """
-import json, math, re, sys
+import json
+import math
+import re
+import sys
 from pathlib import Path
 
 from run_tricks2 import chat

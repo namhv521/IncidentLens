@@ -6,7 +6,9 @@ memory.json per video and resends the relevant history on every call.
 
 M0 = no memory, M1 = memory as JSON text, M2 = chat history (last 2 frames as image/answer turns).
 """
-import json, subprocess, sys
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 import cv2  # noqa: F401  (fails fast if not run with the venv that frames.py needs)
@@ -78,8 +80,9 @@ def reevaluate(out, memory, t_from, t_to):
     if not picked:
         return {'c_verdict': 'UNCERTAIN', 'a_progression': 'no tracked road user in the window'}
     brief = [{k: o[k] for k in ('t', 'state', 'actor', 'evidence')} for o in memory['observations'] if t_from - 2 <= o['t'] <= t_to]
+    frame_times = ', '.join(f"{o['t']:.2f}s" for o in picked)
     prompt = (f'Backend memory for this video: {json.dumps(brief, ensure_ascii=False)}\n'
-              f'The images are crops around the main road user at t = {", ".join(f"{o["t"]:.2f}s" for o in picked)}, in time order. '
+              f'The images are crops around the main road user at t = {frame_times}, in time order. '
               'Gray boxes are masks; ignore them. The memory may contain mistakes; check it against the images. '
               'First describe in at most 50 words how the road user progresses across the images, then give the event type and your verdict.')
     schema = obj(a_progression=TEXT, b_event_type={'enum': ['LOSS_OF_CONTROL_FALL', 'COLLISION', 'NEAR_MISS_PEDESTRIAN', 'NEAR_MISS_VEHICLE', 'SWERVE_NO_FALL', 'OTHER', 'NONE']},

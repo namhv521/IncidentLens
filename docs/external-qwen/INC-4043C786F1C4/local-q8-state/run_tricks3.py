@@ -3,7 +3,8 @@
 J: two boxes per frame (motorcycle, rider) on the fixed C window -> code compares rider pose to the bike.
 G3: free-text difference vs a labeled upright reference, no enum -> code keyword match.
 """
-import json, re
+import json
+import re
 from pathlib import Path
 
 from run_tricks2 import chat

@@ -10,7 +10,9 @@
 4. Tier 2 per event: frames at 4 fps over the event span, Qwen boxes the main road user, one fixed crop
    window, same multiple choice. C upgrades the event to FALL_OR_COLLISION; otherwise it stays NEAR_MISS.
 """
-import json, subprocess, sys
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 import cv2

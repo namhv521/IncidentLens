@@ -1,14 +1,14 @@
 """Send all 13 previously tested frames in one independent Stage 2 request."""
 import base64
-from datetime import datetime, timezone
 import hashlib
 import json
-from pathlib import Path
 import re
 import subprocess
 import time
-import urllib.request
 import urllib.error
+import urllib.request
+from datetime import UTC, datetime
+from pathlib import Path
 
 OUT = Path(__file__).resolve().parent
 FRAMES = Path('/workspace/manual-qwen-tests/INC-4043C786F1C4-prompt-v2')
@@ -51,7 +51,7 @@ def main():
     save('input_metadata.json', metadata)
     save('request.json', {**payload, 'messages': [payload['messages'][0],
          {'role': 'user', 'content': user, 'images': [f'FILE:{f["file"]}' for f in frames]}]})
-    runtime = {'started_at_utc': datetime.now(timezone.utc).isoformat(), 'attached_images': len(images),
+    runtime = {'started_at_utc': datetime.now(UTC).isoformat(), 'attached_images': len(images),
                'gpu_before': subprocess.check_output(['ollama', 'ps'], text=True),
                'hardware': subprocess.check_output(['nvidia-smi', '--query-gpu=name,memory.used', '--format=csv'], text=True)}
     save('runtime.json', runtime)
@@ -86,7 +86,7 @@ def main():
         raise
     finally:
         runtime['elapsed_s'] = round(time.monotonic() - started, 2)
-        runtime['completed_at_utc'] = datetime.now(timezone.utc).isoformat()
+        runtime['completed_at_utc'] = datetime.now(UTC).isoformat()
         runtime['gpu_after'] = subprocess.check_output(['ollama', 'ps'], text=True)
         save('runtime.json', runtime)
         print(json.dumps(runtime, ensure_ascii=False), flush=True)

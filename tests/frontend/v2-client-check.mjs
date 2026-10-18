@@ -13,7 +13,10 @@ const client = await import(`data:text/javascript;base64,${Buffer.from(output).t
 assert.match(client.v2Error(new client.ApiError("denied", 403)), /role/);
 assert.match(client.v2Error(new client.ApiError("stale", 409)), /edits have been kept/);
 assert.match(client.v2Error(new client.ApiError("expired", 401)), /Sign in/);
-const storage = new Map([["incidentlens:v2:upload:rec", "expired-fixture"]]);
+const storage = new Map([
+  ["incidentlens:v2:upload:rec", "expired-fixture"],
+  ["incidentlens:v2:upload-meta:rec", JSON.stringify({ upload_id: "expired-fixture", bytes: 0, sha256: "0".repeat(64) })],
+]);
 globalThis.localStorage = { getItem: (key) => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) };
 globalThis.fetch = async () => new Response(JSON.stringify({ error: { code: "UPLOAD_EXPIRED", message: "expired" } }), { status: 409 });
 await assert.rejects(client.uploadRecording({ name: "fixture.mp4", size: 0 }, "rec", "0".repeat(64), () => {}, new AbortController().signal), /start a new session/);

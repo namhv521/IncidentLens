@@ -7,7 +7,8 @@ carla_v16 win_normal28 contains the autopilot's normal lane change (hard negativ
 
   python windows.py [samples]     samples > 1 adds temperature-0.7 votes
 """
-import json, sys
+import json
+import sys
 from pathlib import Path
 
 from qwen import BOX, TAG, TEXT, chat, obj, to_pixels

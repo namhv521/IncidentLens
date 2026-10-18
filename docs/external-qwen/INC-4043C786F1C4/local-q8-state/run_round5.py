@@ -3,7 +3,9 @@
 Ground truth (by eye): 9.3/9.5/9.7 upright riding (control), 9.9 swerve onset,
 10.0/10.1/10.2 falling, 10.5 fallen. Usage: python run_round5.py <stage>|all
 """
-import json, math, sys
+import json
+import math
+import sys
 from pathlib import Path
 
 from run_tricks2 import chat
@@ -42,7 +44,7 @@ def keypoints():
     for t in FRAMES:
         answer, wall = chat(prompt, [f'frame_{t}_auto.png'], schema, num_predict=80)
         if 'unparsed' not in answer:
-            (hx, hy), (wx, wy), (rx, ry) = answer['a_handlebar_center'], answer['b_front_wheel_bottom'], answer['c_rider_head']
+            (hx, hy), (wx, wy), (_rx, ry) = answer['a_handlebar_center'], answer['b_front_wheel_bottom'], answer['c_rider_head']
             answer['lean_deg'] = round(math.degrees(math.atan2(abs(hx - wx), wy - hy)), 1)
             answer['head_height_over_bar_height'] = round((wy - ry) / (wy - hy), 2) if wy != hy else None
         record('keypoints', t, {**answer, 'wall_s': wall})

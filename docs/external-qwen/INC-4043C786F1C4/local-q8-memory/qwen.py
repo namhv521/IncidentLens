@@ -1,6 +1,11 @@
 """Shared local-Ollama helper for the memory experiments (stdlib only).
 QWEN_MODEL selects the model (default qwen2.5vl:7b)."""
-import base64, json, math, os, time, urllib.request
+import base64
+import json
+import math
+import os
+import time
+import urllib.request
 from pathlib import Path
 
 URL = 'http://127.0.0.1:11434/api/chat'

@@ -2,11 +2,11 @@
 import base64
 import hashlib
 import json
-from pathlib import Path
 import subprocess
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from pathlib import Path
 
 TIMES = [8.3, 9.3, 9.5, 9.7, 9.9, 10, 10.1, 10.2, 10.5, 10.9, 11.5, 12.5, 13.5]
 SOURCE = Path('/workspace/incidentlens-media/INC-4043C786F1C4/source/video.mp4')
@@ -24,7 +24,7 @@ def main():
         '-show_entries', 'frame=best_effort_timestamp_time', '-of', 'json', str(SOURCE)]))
     pts = [float(f['best_effort_timestamp_time']) for f in probe['frames']]
     metadata = {
-        'recording_id': 'INC-4043C786F1C4', 'started_at_utc': datetime.now(timezone.utc).isoformat(),
+        'recording_id': 'INC-4043C786F1C4', 'started_at_utc': datetime.now(UTC).isoformat(),
         'source': str(SOURCE), 'source_sha256': hashlib.file_digest(SOURCE.open('rb'), 'sha256').hexdigest(),
         'model': 'qwen2.5vl:7b', 'requested_seconds': TIMES,
         'frame_selection': 'First decoded frame with presentation timestamp >= requested time; original resolution PNG.',
@@ -84,7 +84,7 @@ def main():
         save('results.json', rows)
         print(json.dumps({k: v for k, v in row.items() if k != 'output'}, ensure_ascii=False), flush=True)
     metadata['gpu_after'] = subprocess.check_output(['ollama', 'ps'], text=True)
-    metadata['completed_at_utc'] = datetime.now(timezone.utc).isoformat()
+    metadata['completed_at_utc'] = datetime.now(UTC).isoformat()
     save('metadata.json', metadata)
     report = ['# Qwen: test độc lập 13 frame — INC-4043C786F1C4', '',
               'Mỗi frame là một request riêng, có system prompt riêng. Output bên dưới là nguyên văn Qwen.',

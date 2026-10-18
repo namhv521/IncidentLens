@@ -6,7 +6,8 @@
 
 meta.json in out_dir holds hood_y and ornament_boxes (full-frame pixels) shared by every step.
 """
-import json, sys
+import json
+import sys
 from pathlib import Path
 
 import cv2

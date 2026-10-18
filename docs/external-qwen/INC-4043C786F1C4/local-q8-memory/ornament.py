@@ -3,7 +3,8 @@ Union of boxes over the stills + margin -> meta.json ornament_boxes (full-frame 
 
   python ornament.py <out_dir> <frame_w> <frame_h>
 """
-import json, sys
+import json
+import sys
 from pathlib import Path
 
 from qwen import BOX, TEXT, chat, obj, to_pixels

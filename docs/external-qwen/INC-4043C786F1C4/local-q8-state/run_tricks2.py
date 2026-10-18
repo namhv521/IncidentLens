@@ -3,7 +3,10 @@
 a_* (observation) then b_* (verdict) so the reasoning is generated first.
 Every trick still runs on control frames (9.3-9.9 s, same motorcycle riding normally).
 """
-import base64, json, time, urllib.request
+import base64
+import json
+import time
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).parent
@@ -64,7 +67,7 @@ if __name__ == '__main__':
         run('S2_sequence_reason_first', name, S, [f'frame_{f}_C_zoom.png' for f in frames], S_SCHEMA)
 
     # I: grounding on the fixed C window; code reads box geometry.
-    I = 'Locate the motorcycle together with its rider in this image. Output its bounding box in pixel coordinates of this image.'
+    grounding_prompt = 'Locate the motorcycle together with its rider in this image. Output its bounding box in pixel coordinates of this image.'
     I_SCHEMA = {'type': 'object', 'required': ['bbox_2d'], 'properties': {'bbox_2d': {'type': 'array', 'items': {'type': 'integer'}, 'minItems': 4, 'maxItems': 4}}}
     for t in ['009_30', '009_50', '009_70', '009_90', '010_00', '010_10', '010_20', '010_50']:
-        run('I_grounding_C', t, I, [f'frame_{t}_C_zoom.png'], I_SCHEMA, num_predict=60)
+        run('I_grounding_C', t, grounding_prompt, [f'frame_{t}_C_zoom.png'], I_SCHEMA, num_predict=60)

@@ -4,7 +4,10 @@ runs on event frames AND control frames (9.3-9.7 s, same motorcycle riding norma
 T = tight 448x448 crop around the motorcycle (ornament masked), C = fixed 720x440 window,
 H = numbered strip of three T crops.
 """
-import base64, json, time, urllib.request
+import base64
+import json
+import time
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).parent

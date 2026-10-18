@@ -5,7 +5,8 @@ sequence prompt (run_sequence) as variant B.
 Event: 9.9 / 10.0 / 10.1 / 10.2 / 10.5 s (swerve, tip over, lying at roadside).
 Control: 9.3 / 9.5 / 9.7 s (same motorcycle still riding normally on the road).
 """
-import json, time
+import json
+import time
 from pathlib import Path
 
 from run_sequence import run

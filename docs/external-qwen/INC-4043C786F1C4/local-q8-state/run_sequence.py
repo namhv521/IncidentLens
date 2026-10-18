@@ -3,7 +3,10 @@
 Event set: 9.5 / 10.0 / 10.2 s (motorcycle approaches, swerves, falls).
 Control set: 11.5 / 12.5 / 13.5 s (no motorcycle in view).
 """
-import base64, json, time, urllib.request
+import base64
+import json
+import time
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).parent
