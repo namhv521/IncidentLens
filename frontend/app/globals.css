@@ -696,3 +696,62 @@ html:has(.workspace-header-shell .report-workspace)::-webkit-scrollbar{display:n
 .report-document .structured-analysis button {min-height:36px;color:var(--workspace-primary);}
 .report-document .report-evidence-output {padding-top:8px;}
 @media(max-width:650px){.report-document-heading,.report-document .report-editor-surface,.report-document .structured-analysis > section{padding:20px;}.report-document-heading h2{font-size:23px;}.report-document-heading > div{flex-direction:column;}.workspace-header-shell .report-document{gap:22px;}}
+/* Export controls follow the app theme; the document owns its paper palette. */
+html[data-theme] .report-export-dialog {background:var(--workspace-bg);color:var(--workspace-ink);max-height:92dvh;overflow-y:auto;}
+html[data-theme] .report-export-dialog .report-export-header {background:var(--workspace-surface);color:var(--workspace-ink);border-color:var(--workspace-border);}
+html[data-theme] .report-export-dialog :is(h2,.eyebrow) {color:var(--workspace-ink);}
+html[data-theme] .report-export-dialog :is(#report-preview-note,.report-export-header p,.report-export-footer p) {color:var(--workspace-muted);}
+.report-document-frame {display:block;width:100%;height:62dvh;min-height:360px;border:1px solid var(--workspace-border);border-radius:10px;background:#eef0f5;color-scheme:light;}
+html[data-theme] .report-export-dialog pre.report-export-preview {background:#fff!important;color:#202a3b!important;color-scheme:light;}
+/* Keep preview dismissal and export actions available while the document scrolls. */
+html[data-theme] .report-export-dialog .report-export-header {position:sticky;top:0;z-index:3;background:var(--workspace-surface);box-shadow:0 1px 0 var(--workspace-border);}
+html[data-theme] .report-export-dialog .report-export-footer {position:sticky;bottom:-20px;z-index:3;margin:0 -20px -20px;padding:16px 20px;background:var(--workspace-surface);border-top:1px solid var(--workspace-border);}
+.report-header-actions {position:relative;}
+.workspace-header-shell .report-export-launcher {position:fixed;right:24px;bottom:24px;z-index:45;background:var(--workspace-surface);color:var(--workspace-ink);border:1px solid var(--workspace-border);box-shadow:0 4px 18px #0002;min-height:44px;}
+@media(max-width:650px){.workspace-header-shell .report-export-launcher{right:16px;bottom:16px;}}
+/* A taller, centered footage stage and a compact timeline retain native aspect ratio. */
+.workspace-header-shell .review-pinned-video .video-player-stage {display:grid;place-items:center;height:clamp(260px,47dvh,580px);max-height:none;aspect-ratio:auto;}
+.workspace-header-shell .review-pinned-video .video-player-stage > video {width:100%;height:100%;min-height:0;max-height:100%;object-fit:contain;object-position:50% 50%;margin:auto;}
+.workspace-header-shell .review-pinned-video .incident-timeline-compact {padding:12px 16px;}
+.incident-timeline-compact .grid > span > span {margin-left:5px;}
+@media(max-width:1023px){.workspace-header-shell .review-pinned-video{max-height:none;overflow:visible;}.workspace-header-shell .review-pinned-video .video-player-stage{height:clamp(220px,38dvh,440px);max-height:none;}}
+@media(max-width:650px){.workspace-header-shell .review-pinned-video .video-player-stage{height:clamp(200px,32dvh,330px);}.workspace-header-shell .review-pinned-video .incident-timeline-compact{padding:10px 12px;}.incident-timeline-compact .grid{font-size:10px;}}
+.video-player:fullscreen .video-player-stage {height:auto!important;max-height:none!important;flex:1;}
+/* Fullscreen overrides the higher-specificity pinned-player sizing rules. */
+html[data-theme] .workspace-header-shell .review-pinned-video .video-player:fullscreen,
+html[data-theme] .video-player:fullscreen {position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;display:flex!important;flex-direction:column;border:0!important;border-radius:0!important;overflow:hidden!important;background:#080e1d;}
+html[data-theme] .workspace-header-shell .review-pinned-video .video-player:fullscreen .video-player-stage,
+html[data-theme] .video-player:fullscreen .video-player-stage {width:100%!important;height:100%!important;flex:1 1 0!important;min-height:0!important;max-height:none!important;aspect-ratio:auto!important;display:grid;place-items:center;}
+html[data-theme] .video-player:fullscreen .video-player-stage > video {width:100%;height:100%;max-height:100%;object-fit:contain;object-position:center;}
+.route-navigation-feedback {pointer-events:none;position:fixed;inset:0 0 auto;z-index:1000;}
+.route-navigation-line {display:block;height:3px;background:linear-gradient(90deg,transparent,var(--workspace-primary),var(--workspace-signal-secondary),transparent);background-size:55% 100%;background-repeat:no-repeat;animation:route-navigation-progress 1.4s ease-in-out infinite;}
+.route-navigation-label {position:fixed;right:20px;bottom:20px;padding:10px 16px;border:1px solid var(--workspace-border);border-radius:10px;background:var(--workspace-surface);color:var(--workspace-ink);font-size:12px;}
+@keyframes route-navigation-progress {from{background-position:-120% 0;}to{background-position:230% 0;}}
+@media(prefers-reduced-motion:reduce){.route-navigation-line{animation:none;background-size:100% 100%;}}
+/* Bring the upload task into the first viewport, below the sticky navigation. */
+.workspace-header-shell .workspace-main:has(.upload-page) {padding-top:12px;}
+.upload-page {scroll-margin-top:84px;}
+.upload-page .task-back {margin-bottom:8px;min-height:32px;}
+.upload-page .page-header {margin-bottom:14px;}
+.upload-page .page-title {font-size:26px;line-height:1.3;}
+.upload-page .page-description {margin-top:5px;font-size:13px;line-height:1.6;}
+.upload-page .upload-journey {margin-top:0;margin-bottom:18px;padding-block:10px;}
+.upload-page .upload-sources {padding:20px;}
+.upload-page .upload-section-heading {margin-bottom:16px;}
+.upload-page .upload-sources > .grid {gap:18px;}
+.upload-page .upload-dropzone {min-height:128px;padding:18px;}
+.upload-page .upload-dropzone[data-required='true'] {min-height:160px;}
+.upload-page .upload-dropzone > span:first-child {width:36px;height:36px;margin-bottom:8px;}
+.upload-page .upload-summary {top:84px;padding:20px;}
+.upload-page .upload-summary-icon {padding:9px;margin-bottom:12px;}
+.upload-page .upload-file-summary {margin-block:16px;}
+.upload-page .upload-file-summary > div {padding-block:12px;}
+.upload-page .upload-next-step {padding-top:12px;margin-top:12px;}
+@media(max-width:700px){
+ .upload-page .upload-layout {gap:16px;}
+ .upload-page .upload-summary {padding-bottom:92px;}
+ .upload-page .upload-actions {position:fixed;inset:auto 0 0;z-index:46;display:flex;flex-direction:row;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--workspace-surface);border-top:1px solid var(--workspace-border);}
+ .upload-page .upload-actions > button:first-child {flex:1;}
+ .upload-page .upload-actions > button:last-child {width:auto;}
+ .upload-page .upload-journey {gap:8px 16px;}
+}

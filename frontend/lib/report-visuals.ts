@@ -26,7 +26,7 @@ export async function prepareReportFigures(id: string, evidence: Evidence[], tel
         canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
         const context = canvas.getContext("2d"); if (!context) throw new Error("Canvas unavailable");
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        figures.push({ caption: `${item.evidence_id} at ${item.time_range_s[0]}s (incident-relative); SHA256 ${item.sha256}`, pngBase64: canvas.toDataURL("image/png").split(",")[1], width: canvas.width, height: canvas.height });
+        figures.push({ caption: `Khung hình tại ${item.time_range_s[0]} giây so với mốc sự kiện (0 giây). Mốc âm: trước sự kiện; mốc dương: sau sự kiện.`, pngBase64: canvas.toDataURL("image/png").split(",")[1], width: canvas.width, height: canvas.height });
       } finally { URL.revokeObjectURL(url); }
     } catch (error) {
       if (signal.aborted) throw error;
@@ -61,7 +61,7 @@ export async function prepareReportFigures(id: string, evidence: Evidence[], tel
         connected = true;
       }
       context.stroke();
-      figures.push({ caption: `${series.label}; source: telemetry; alignment VERIFIED; ${telemetry.downsampled ? "downsampled" : "supplied"} samples. Charts do not by themselves establish a collision.`, pngBase64: canvas.toDataURL("image/png").split(",")[1], width: 1000, height: 360 });
+      figures.push({ caption: `${series.label} (${series.unit ?? "đơn vị chưa được cung cấp"}); source: telemetry; thời gian tính từ đầu video. ${telemetry.downsampled ? "Đã rút gọn số điểm hiển thị." : "Dữ liệu đo được cung cấp."} Không dùng riêng biểu đồ để kết luận va chạm.`, pngBase64: canvas.toDataURL("image/png").split(",")[1], width: 1000, height: 360 });
     }
   }
   return { figures, notes };
