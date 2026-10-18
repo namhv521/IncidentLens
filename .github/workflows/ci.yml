@@ -30,7 +30,7 @@ jobs:
           ffprobe -version
 
       - name: Run tests
-        run: python -m pytest tests/ -v --tb=short -p pytest_asyncio.plugin
+        run: python -m pytest tests/ -v --tb=short -rs -p pytest_asyncio.plugin
         env:
           APP_ENV: test
           DATABASE_CLOUD: "false"
@@ -44,11 +44,20 @@ jobs:
       - name: Install frontend dependencies
         run: npm --prefix frontend ci
 
-      - name: Check frontend
-        run: |
-          npm --prefix frontend run typecheck
-          npm --prefix frontend run lint
-          node tests/frontend/report-editor-check.mjs
-          node tests/frontend/v2-client-check.mjs
-          node -e "const fs = require('node:fs'); const cp = require('node:child_process'); for (const file of fs.readdirSync('frontend/tests').filter(name => name.endsWith('regression.cjs')).sort()) cp.execFileSync(process.execPath, ['tests/' + file], { cwd: 'frontend', stdio: 'inherit' });"
-          npm --prefix frontend run build
+      - name: Typecheck frontend
+        run: npm --prefix frontend run typecheck
+
+      - name: Lint frontend
+        run: npm --prefix frontend run lint
+
+      - name: Check report editor
+        run: node tests/frontend/report-editor-check.mjs
+
+      - name: Check V2 client
+        run: node tests/frontend/v2-client-check.mjs
+
+      - name: Run frontend regressions
+        run: node -e "const fs = require('node:fs'); const cp = require('node:child_process'); for (const file of fs.readdirSync('frontend/tests').filter(name => name.endsWith('regression.cjs')).sort()) cp.execFileSync(process.execPath, ['tests/' + file], { cwd: 'frontend', stdio: 'inherit' });"
+
+      - name: Build frontend
+        run: npm --prefix frontend run build
