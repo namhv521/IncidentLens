@@ -19,7 +19,7 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/report-visuals.ts', '
   assert.equal(requests, 4); assert.equal(revoked, 4); assert.equal(result.figures.length, 4);
   assert.ok(result.notes.some(note => note.includes('omitted')));
   const chart = await loaded.exports.prepareReportFigures('INC', [], { state: 'available', alignment: 'VERIFIED', time_basis: 'video_seconds', downsampled: true, signals: [{ label: 'Speed', unit: 'km/h', samples: [{ time_s: 0, value: 40 }, { time_s: 1, value: null }, { time_s: 2, value: 20 }] }] }, { aborted: false });
-  assert.equal(chart.figures.length, 1); assert.match(chart.figures[0].caption, /downsampled/);
+  assert.equal(chart.figures.length, 1); assert.match(chart.figures[0].caption, /Đã rút gọn số điểm hiển thị/);
   assert.equal(moves, 2); assert.equal(lines, 0, 'null values must break the plot rather than become zero or connected data');
   await assert.rejects(loaded.exports.prepareReportFigures('INC', [frame], undefined, { aborted: true }), /cancelled/);
   console.log('PASS: bounded authenticated frame reads, revoked blob URLs, unknown alignment omission, chart gaps and cancelled export');
