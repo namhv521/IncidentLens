@@ -1,0 +1,180 @@
+{
+  "url": "https://c4-app-076.vercel.app/api/v1/health",
+  "measured_at": "2026-10-18T19:52:36.486192+07:00",
+  "method": "Sequential urllib GET, response-body completion, fresh connection per request; warmup excluded; p95 nearest rank. Public API health only, no inference or browser paint.",
+  "samples": [
+    {
+      "sample": 0,
+      "warmup": true,
+      "ms": 22932.077,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 1,
+      "warmup": false,
+      "ms": 286.208,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 2,
+      "warmup": false,
+      "ms": 313.023,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 3,
+      "warmup": false,
+      "ms": 271.294,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 4,
+      "warmup": false,
+      "ms": 367.267,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 5,
+      "warmup": false,
+      "ms": 260.176,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 6,
+      "warmup": false,
+      "ms": 240.165,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 7,
+      "warmup": false,
+      "ms": 268.469,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 8,
+      "warmup": false,
+      "ms": 260.369,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 9,
+      "warmup": false,
+      "ms": 264.981,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 10,
+      "warmup": false,
+      "ms": 251.101,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 11,
+      "warmup": false,
+      "ms": 285.803,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 12,
+      "warmup": false,
+      "ms": 348.733,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 13,
+      "warmup": false,
+      "ms": 241.983,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 14,
+      "warmup": false,
+      "ms": 244.945,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 15,
+      "warmup": false,
+      "ms": 237.562,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 16,
+      "warmup": false,
+      "ms": 252.432,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 17,
+      "warmup": false,
+      "ms": 269.558,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 18,
+      "warmup": false,
+      "ms": 232.506,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 19,
+      "warmup": false,
+      "ms": 265.087,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    },
+    {
+      "sample": 20,
+      "warmup": false,
+      "ms": 266.986,
+      "status": 200,
+      "valid": true,
+      "x_vercel_cache": "MISS"
+    }
+  ],
+  "n": 20,
+  "median_ms": 265,
+  "p95_ms": 349,
+  "min_ms": 233,
+  "max_ms": 367
+}
