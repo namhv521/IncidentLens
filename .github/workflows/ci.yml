@@ -57,7 +57,8 @@ jobs:
         run: node tests/frontend/v2-client-check.mjs
 
       - name: Run frontend regressions
-        run: node -e "const fs = require('node:fs'); const cp = require('node:child_process'); for (const file of fs.readdirSync('frontend/tests').filter(name => name.endsWith('regression.cjs')).sort()) cp.execFileSync(process.execPath, ['tests/' + file], { cwd: 'frontend', stdio: 'inherit' });"
+        run: >-
+          node -e "const fs = require('node:fs'); const cp = require('node:child_process'); for (const file of fs.readdirSync('frontend/tests').filter(name => name.endsWith('regression.cjs')).sort()) cp.execFileSync(process.execPath, ['tests/' + file], { cwd: 'frontend', stdio: 'inherit' });"
 
       - name: Build frontend
         run: npm --prefix frontend run build
