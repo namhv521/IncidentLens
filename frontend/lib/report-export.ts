@@ -182,8 +182,8 @@ function exportFigures(doc: ExportDocument): ExportFigure[] {
 // Reader-facing exports omit implementation details; the JSON export remains complete.
 function readerDocument(doc: ExportDocument): ExportDocument {
   const readable = (text: string) => text.replace(/SHA256\s+[a-f0-9]+/gi, "").replace(/\bSUPPORTED_INFERENCE\b/g, "Suy luận có bằng chứng").replace(/\bOBSERVED\b/g, "Quan sát trực tiếp").replace(/\bHYPOTHESIS\b/g, "Giả thuyết cần kiểm chứng").replace(/\bUnknown\b/g, "Chưa xác định").replace(/\bNone recorded\b/g, "Chưa có thông tin được ghi nhận").replace(/\bvideo_seconds\b/g, "giây từ đầu video").replace(/\bCollision-relative seconds\b/g, "Giây tương đối so với mốc sự kiện (0 giây)").trim();
-  const names: Record<string, string> = {Summary:"Tóm tắt sự cố",Incident:"Thông tin chính & mốc thời gian",Timeline:"Diễn biến sự việc",Observations:"Quan sát từ dữ liệu",Factors:"Yếu tố liên quan",Unknowns:"Giới hạn & điểm cần xác minh", "Rejection reason":"Phản hồi của người review"};
-  const excluded = new Set(["Evidence references", "Additional report details", "Export coverage"]);
+  const names: Record<string, string> = {Summary:"Tóm tắt sự cố",Incident:"Thông tin chính & mốc thời gian",Timeline:"Diễn biến sự việc",Observations:"Quan sát từ dữ liệu",Factors:"Yếu tố liên quan",Unknowns:"Giới hạn & điểm cần xác minh", "Rejection reason":"Phản hồi của người review", "Export coverage":"Giới hạn dữ liệu xuất báo cáo"};
+  const excluded = new Set(["Evidence references", "Additional report details"]);
   const fieldNames: Record<string,string> = {Type:"Loại sự kiện",Detected:"AI nhận diện sự kiện", "Time basis":"Cách đọc mốc thời gian",Start:"Bắt đầu",Critical:"Mốc trọng yếu",End:"Kết thúc"};
   return { ...doc, sections:doc.sections.filter(section=>!excluded.has(section.title)).map(section=>{
     const fields=section.fields?.filter(field=>!['Recording','Candidate'].includes(field.label)).map(field=>({label:fieldNames[field.label]??field.label,value:readable(field.value).replace(/^Yes$/,'Có — cần review').replace(/^No$/,'Chưa nhận diện — không đồng nghĩa không có sự cố')}));

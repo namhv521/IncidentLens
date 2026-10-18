@@ -13,7 +13,7 @@ export function RouteTransition({ children }: { children: ReactNode }) {
   useEffect(() => {
     const start = (event: MouseEvent) => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const anchor = (event.target as Element)?.closest<HTMLAnchorElement>("a[href]");
+      const anchor = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
       if (!anchor || anchor.download || anchor.target && anchor.target !== "_self") return;
       const next = new URL(anchor.href, location.href);
       if (next.origin !== location.origin || next.pathname === location.pathname) return;
@@ -22,8 +22,9 @@ export function RouteTransition({ children }: { children: ReactNode }) {
       pending.current = setTimeout(() => setNavigating(true), 160);
       expiry.current = setTimeout(() => setNavigating(false), 12000);
     };
-    document.addEventListener("click", start, true);
-    return () => { document.removeEventListener("click", start, true); if (pending.current) clearTimeout(pending.current); if (expiry.current) clearTimeout(expiry.current); };
+    // Unsaved-edit guards cancel links during capture, before feedback starts.
+    document.addEventListener("click", start);
+    return () => { document.removeEventListener("click", start); if (pending.current) clearTimeout(pending.current); if (expiry.current) clearTimeout(expiry.current); };
   }, []);
   useEffect(() => {
     if (pending.current) clearTimeout(pending.current);

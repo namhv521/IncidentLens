@@ -13,9 +13,11 @@ assert.ok(doc.sections.find(s => s.title === 'Timeline').lines[0].includes('Vehi
 assert.ok(doc.sections.find(s => s.title === 'Incident').lines.some(s => s.includes('video_seconds')));
 assert.equal(normalizeReport('empty', null).sections[0].lines[0], 'Unknown');
 const html = printableReport(doc); assert.ok(!html.includes('<script>')); assert.ok(html.includes('&lt;script&gt;')); assert.ok(html.includes('UNAPPROVED REPORT')); assert.ok(!html.includes('<iframe')); assert.ok(!html.includes('<img'));
+const limitedDoc = { ...doc, sections: [...doc.sections, { title: 'Export coverage', lines: ['Telemetry charts are omitted because synchronized video-time telemetry is unavailable.'] }] };
+assert.ok(printableReport(limitedDoc).includes('Telemetry charts are omitted'), 'PDF preview must preserve omitted-data limitations');
 assert.ok(!printableReport(normalizeReport('approved', { review_status: 'APPROVED' })).includes('UNAPPROVED REPORT'));
 assert.ok(!exportFilename('../../bad id', 'json').includes('/'));
-const zip = Buffer.from(reportDocx(doc)); const entries = new Map(); let offset = 0;
+const zip = Buffer.from(reportDocx(limitedDoc)); const entries = new Map(); let offset = 0;
 function crc32(data) { let crc = 0xffffffff; for (const byte of data) { crc ^= byte; for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0); } return (crc ^ 0xffffffff) >>> 0; }
 while (zip.readUInt32LE(offset) === 0x04034b50) {
   const size = zip.readUInt32LE(offset + 18); const nameLength = zip.readUInt16LE(offset + 26); const extraLength = zip.readUInt16LE(offset + 28);
@@ -24,6 +26,7 @@ while (zip.readUInt32LE(offset) === 0x04034b50) {
 }
 for (const name of ['[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'word/styles.xml', 'word/_rels/document.xml.rels']) assert.ok(entries.has(name));
 assert.ok(entries.get('word/document.xml').includes('tiếng Việt')); assert.ok(entries.get('word/document.xml').includes('&lt;script&gt;'));
+assert.ok(entries.get('word/document.xml').includes('Telemetry charts are omitted'), 'DOCX must preserve the same omitted-data limitations');
 assert.ok(entries.get('word/document.xml').includes('<w:br/><w:t xml:space="preserve">Second line</w:t><w:br/><w:t xml:space="preserve">Third line</w:t>'));
 assert.equal(zip.readUInt32LE(offset), 0x02014b50); assert.equal(zip.readUInt32LE(zip.length - 22), 0x06054b50); assert.equal(zip.readUInt16LE(zip.length - 14), entries.size);
 console.log('PASS: saved v1/v2 normalization, null values, safe markup, unapproved marking, sanitized filenames, valid OOXML ZIP parts/CRC/Unicode/central directory');
